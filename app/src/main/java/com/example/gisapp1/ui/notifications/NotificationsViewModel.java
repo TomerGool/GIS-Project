@@ -4,16 +4,36 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-public class NotificationsViewModel extends ViewModel {
+import com.example.gisapp1.models.AppNotification;
+import com.example.gisapp1.services.NotificationRepository;
 
-    private final MutableLiveData<String> mText;
+import java.util.List;
+
+public class NotificationsViewModel extends ViewModel {
+    private NotificationRepository notificationRepository;
+    private MutableLiveData<List<AppNotification>> notifications;
 
     public NotificationsViewModel() {
-        mText = new MutableLiveData<>();
-        mText.setValue("This is notifications fragment");
+        notificationRepository = new NotificationRepository();
+        notifications = new MutableLiveData<>();
+        refreshNotifications();
     }
 
-    public LiveData<String> getText() {
-        return mText;
+    public LiveData<List<AppNotification>> getNotifications() {
+        return notifications;
+    }
+
+    public void refreshNotifications() {
+        notificationRepository.getUserNotifications().observeForever(notificationList -> {
+            notifications.setValue(notificationList);
+        });
+    }
+
+    public void markNotificationAsRead(String notificationId) {
+        notificationRepository.markNotificationAsRead(notificationId);
+    }
+
+    public void deleteNotification(String notificationId) {
+        notificationRepository.deleteNotification(notificationId);
     }
 }

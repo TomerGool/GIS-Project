@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp"
+    android:orientation="vertical">
+
+    <EditText
+        android:id="@+id/et_address"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Parking address" />
+
+    <Button
+        android:id="@+id/btn_get_location"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Get My Current Location 📍"
+        android:backgroundTint="@color/teal_700"
+        android:textColor="@android:color/white"
+        android:layout_marginBottom="16dp"/>
+
+
+    <EditText
+        android:id="@+id/et_availability"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Available hours( like 08:00-17:00)" />
+
+    <EditText
+        android:id="@+id/et_price"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Price per hour (₪)" />
+
+    <Button
+        android:id="@+id/btn_save_parking"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Save Parking"
+        android:backgroundTint="@color/teal_700"
+        android:layout_marginTop="16dp" />
+</LinearLayout>
