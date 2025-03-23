@@ -112,6 +112,31 @@ public class ParkingSpotDetailsDialog extends DialogFragment {
         return builder.create();
     }
 
+    /**
+     * Format phone number for WhatsApp by ensuring it has country code
+     * @param phone The phone number to format
+     * @return Formatted phone number for WhatsApp
+     */
+    private String formatPhoneForWhatsApp(String phone) {
+        // Remove any non-digit characters
+        String digits = phone.replaceAll("\\D", "");
+
+        // If the number doesn't start with a country code (assuming Israel +972 as default)
+        if (digits.startsWith("0")) {
+            // Replace leading 0 with 972 (Israel country code)
+            return "972" + digits.substring(1);
+        } else if (!digits.startsWith("972") && !digits.startsWith("+")) {
+            // If no country code and doesn't start with 0, add 972
+            return "972" + digits;
+        } else if (digits.startsWith("+")) {
+            // Remove the + if it exists (WhatsApp URLs don't use +)
+            return digits.substring(1);
+        }
+
+        // Return as is if already has country code
+        return digits;
+    }
+
     private void setupContactOptions() {
         // Fetch owner's contact details
         db.collection("users").document(parkingSpot.getOwnerId())
@@ -131,7 +156,8 @@ public class ParkingSpotDetailsDialog extends DialogFragment {
                                     intent = new Intent(Intent.ACTION_DIAL,
                                             Uri.parse("tel:" + phone));
                                 } else { // WhatsApp
-                                    String whatsappUrl = "https://wa.me/" + phone;
+                                    String formattedPhone = formatPhoneForWhatsApp(phone);
+                                    String whatsappUrl = "https://wa.me/" + formattedPhone;
                                     intent = new Intent(Intent.ACTION_VIEW,
                                             Uri.parse(whatsappUrl));
                                 }

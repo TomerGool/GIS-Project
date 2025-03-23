@@ -1,5 +1,6 @@
 package com.example.gisapp1.ui.notifications;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -15,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.gisapp1.R;
 import com.example.gisapp1.activities.MainActivity;
+import com.example.gisapp1.activities.ParkingSearchCriteriaActivity;
 import com.example.gisapp1.adapters.NotificationAdapter;
 import com.example.gisapp1.databinding.FragmentNotificationsBinding;
 import com.example.gisapp1.models.AppNotification;
@@ -61,10 +63,21 @@ public class NotificationsFragment extends Fragment {
 
                     @Override
                     public void onViewParkingSpot(AppNotification notification) {
-                        // Navigate to view this parking spot
-                        if (notification.getRelatedEntityId() != null &&
-                                (notification.getType() == AppNotification.NotificationType.PARKING_AVAILABLE ||
-                                        notification.getType() == AppNotification.NotificationType.SPOT_BOOKED)) {
+                        // Check notification type and handle accordingly
+                        if (notification.getType() == AppNotification.NotificationType.PARKING_AVAILABLE) {
+                            // Navigate to Parking Search Criteria Activity
+                            Intent intent = new Intent(getActivity(), ParkingSearchCriteriaActivity.class);
+
+                            // Pass search criteria from notification
+                            if (notification.getExtraData() != null) {
+                                intent.putExtra("location", notification.getExtraData("location"));
+                                intent.putExtra("startTime", notification.getExtraData("startTime"));
+                                intent.putExtra("endTime", notification.getExtraData("endTime"));
+                            }
+
+                            startActivity(intent);
+                        } else if (notification.getRelatedEntityId() != null &&
+                                notification.getType() == AppNotification.NotificationType.SPOT_BOOKED) {
 
                             if (getActivity() instanceof MainActivity) {
                                 MainActivity mainActivity = (MainActivity) getActivity();

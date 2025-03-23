@@ -14,6 +14,8 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.gisapp1.R;
+import com.example.gisapp1.activities.MainActivity;
+import com.example.gisapp1.activities.ParkingSearchCriteriaActivity;
 import com.example.gisapp1.models.AppNotification;
 
 import java.text.SimpleDateFormat;
@@ -102,50 +104,112 @@ public class NotificationAdapter extends RecyclerView.Adapter<NotificationAdapte
                 }
             });
 
-// Handle contact button for SPOT_BOOKED notifications
-            if (notification.getType() == AppNotification.NotificationType.SPOT_BOOKED &&
-                    notification.getExtraData() != null) {
-
-                String renterName = notification.getExtraData("renterName");
-                String renterPhone = notification.getExtraData("renterPhone");
-                String renterEmail = notification.getExtraData("renterEmail");
-
-                if (renterPhone != null && !renterPhone.isEmpty()) {
-                    contactButton.setVisibility(View.VISIBLE);
-                    contactButton.setText("Contact " + (renterName != null ? renterName : "Renter"));
-
-                    contactButton.setOnClickListener(v -> {
-                        new AlertDialog.Builder(itemView.getContext())
-                                .setTitle("Contact Renter")
-                                .setItems(new String[]{"Call", "WhatsApp", "Email"}, (dialog, which) -> {
-                                    Intent intent;
-                                    switch (which) {
-                                        case 0: // Call
-                                            intent = new Intent(Intent.ACTION_DIAL,
-                                                    Uri.parse("tel:" + renterPhone));
-                                            itemView.getContext().startActivity(intent);
-                                            break;
-                                        case 1: // WhatsApp
-                                            String whatsappUrl = "https://wa.me/" + renterPhone;
-                                            intent = new Intent(Intent.ACTION_VIEW,
-                                                    Uri.parse(whatsappUrl));
-                                            itemView.getContext().startActivity(intent);
-                                            break;
-                                        case 2: // Email
-                                            intent = new Intent(Intent.ACTION_SENDTO,
-                                                    Uri.parse("mailto:" + renterEmail));
-                                            itemView.getContext().startActivity(intent);
-                                            break;
-                                    }
-                                })
-                                .show();
-                    });
-                } else {
-                    contactButton.setVisibility(View.GONE);
+            // Handle contact/reservation button for different notification types
+            if (notification.getExtraData() != null) {
+                switch (notification.getType()) {
+                    case SPOT_BOOKED:
+                        handleSpotBookedNotification(notification);
+                        break;
+                    case PARKING_AVAILABLE:
+                        handleParkingAvailableNotification(notification);
+                        break;
+                    default:
+                        contactButton.setVisibility(View.GONE);
                 }
             } else {
                 contactButton.setVisibility(View.GONE);
             }
+        }
+
+        private void handleSpotBookedNotification(AppNotification notification) {
+            String renterName = notification.getExtraData("renterName");
+            String renterPhone = notification.getExtraData("renterPhone");
+            String renterEmail = notification.getExtraData("renterEmail");
+
+            if (renterPhone != null && !renterPhone.isEmpty()) {
+                contactButton.setVisibility(View.VISIBLE);
+                contactButton.setText("Contact " + (renterName != null ? renterName : "Renter"));
+
+                contactButton.setOnClickListener(v -> {
+                    new AlertDialog.Builder(itemView.getContext())
+                            .setTitle("Contact Renter")
+                            .setItems(new String[]{"Call", "WhatsApp", "Email"}, (dialog, which) -> {
+                                Intent intent;
+                                switch (which) {
+                                    case 0: // Call
+                                        intent = new Intent(Intent.ACTION_DIAL,
+                                                Uri.parse("tel:" + renterPhone));
+                                        itemView.getContext().startActivity(intent);
+                                        break;
+                                    case 1: // WhatsApp
+                                        // Format phone number for WhatsApp (ensure it has country code)
+                                        String formattedPhone = formatPhoneForWhatsApp(renterPhone);
+                                        String whatsappUrl = "https://wa.me/" + formattedPhone;
+                                        intent = new Intent(Intent.ACTION_VIEW,
+                                                Uri.parse(whatsappUrl));
+                                        itemView.getContext().startActivity(intent);
+                                        break;
+                                    case 2: // Email
+                                        intent = new Intent(Intent.ACTION_SENDTO,
+                                                Uri.parse("mailto:" + renterEmail));
+                                        itemView.getContext().startActivity(intent);
+                                        break;
+                                }
+                            })
+                            .show();
+                });
+            } else {
+                contactButton.setVisibility(View.GONE);
+            }
+        }
+
+        /**
+         * Format phone number for WhatsApp by ensuring it has country code
+         * @param phone The phone number to format
+         * @return Formatted phone number for WhatsApp
+         */
+        private String formatPhoneForWhatsApp(String phone) {
+            // Remove any non-digit characters
+            String digits = phone.replaceAll("\\D", "");
+
+            // If the number doesn't start with a country code (assuming Israel +972 as default)
+            if (digits.startsWith("0")) {
+                // Replace leading 0 with 972 (Israel country code)
+                return "972" + digits.substring(1);
+            } else if (!digits.startsWith("972") && !digits.startsWith("+")) {
+                // If no country code and doesn't start with 0, add 972
+                return "972" + digits;
+            } else if (digits.startsWith("+")) {
+                // Remove the + if it exists (WhatsApp URLs don't use +)
+                return digits.substring(1);
+            }
+
+            // Return as is if already has country code
+            return digits;
+        }
+
+        private void handleParkingAvailableNotification(AppNotification notification) {
+            contactButton.setVisibility(View.VISIBLE);
+            contactButton.setText("Reserve Spot");
+            contactButton.setOnClickListener(v -> {
+                // Get parking spot details from notification
+                String parkingSpotId = notification.getRelatedEntityId();
+                String location = notification.getExtraData("spotAddress");
+                String availableFrom = notification.getExtraData("availableFrom");
+                String availableUntil = notification.getExtraData("availableUntil");
+
+                // Open parking spot details dialog
+                if (itemView.getContext() instanceof MainActivity) {
+                    ((MainActivity) itemView.getContext()).loadAndShowParkingSpot(parkingSpotId);
+                } else {
+                    // Fallback: Navigate to Parking Search Criteria with pre-filled data
+                    Intent intent = new Intent(itemView.getContext(), ParkingSearchCriteriaActivity.class);
+                    intent.putExtra("location", location);
+                    intent.putExtra("startTime", availableFrom);
+                    intent.putExtra("endTime", availableUntil);
+                    itemView.getContext().startActivity(intent);
+                }
+            });
         }
     }
 }

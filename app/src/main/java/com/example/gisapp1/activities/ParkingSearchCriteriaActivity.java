@@ -1,8 +1,12 @@
 package com.example.gisapp1.activities;
 
 import android.app.TimePickerDialog;
+import android.content.Intent;
+import android.location.Address;
+import android.location.Geocoder;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -14,11 +18,14 @@ import com.example.gisapp1.services.ParkingAvailabilityNotificationService;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+
 
 public class ParkingSearchCriteriaActivity extends AppCompatActivity {
     private FirebaseFirestore db;
@@ -44,6 +51,31 @@ public class ParkingSearchCriteriaActivity extends AppCompatActivity {
         startTimeButton = findViewById(R.id.btn_start_time);
         endTimeButton = findViewById(R.id.btn_end_time);
         saveSearchButton = findViewById(R.id.btn_save_search);
+
+        // Check for pre-filled data from notification
+        Intent intent = getIntent();
+        if (intent != null) {
+            String location = intent.getStringExtra("location");
+            String notificationStartTime = intent.getStringExtra("startTime");
+            String notificationEndTime = intent.getStringExtra("endTime");
+
+            // Pre-fill location if available
+            if (!TextUtils.isEmpty(location)) {
+                locationEditText.setText(location);
+            }
+
+            // Pre-fill start time if available
+            if (!TextUtils.isEmpty(notificationStartTime)) {
+                startTime = notificationStartTime;
+                startTimeButton.setText(notificationStartTime);
+            }
+
+            // Pre-fill end time if available
+            if (!TextUtils.isEmpty(notificationEndTime)) {
+                endTime = notificationEndTime;
+                endTimeButton.setText(notificationEndTime);
+            }
+        }
 
         // Setup time selection buttons
         startTimeButton.setOnClickListener(v -> showTimePickerDialog(true));
@@ -85,6 +117,8 @@ public class ParkingSearchCriteriaActivity extends AppCompatActivity {
 
     private void saveParkingSearchCriteria() {
         String location = locationEditText.getText().toString().trim();
+        double latitude = 0.0;
+        double longitude = 0.0;
 
         if (TextUtils.isEmpty(location)) {
             locationEditText.setError("Please enter a location");
@@ -101,11 +135,33 @@ public class ParkingSearchCriteriaActivity extends AppCompatActivity {
             return;
         }
 
+        // Use Geocoder to get precise location coordinates
+        Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+        try {
+            List<Address> addresses = geocoder.getFromLocationName(location, 1);
+            if (!addresses.isEmpty()) {
+                Address address = addresses.get(0);
+                latitude = address.getLatitude();
+                longitude = address.getLongitude();
+
+                // Update location with more precise address if available
+                String preciseAddress = address.getAddressLine(0);
+                if (preciseAddress != null) {
+                    location = preciseAddress;
+                }
+            }
+        } catch (IOException e) {
+            Log.e("GeoCodingError", "Geocoding failed", e);
+            Toast.makeText(this, "Could not verify location precisely", Toast.LENGTH_SHORT).show();
+        }
+
         String userId = auth.getCurrentUser().getUid();
 
         Map<String, Object> searchCriteria = new HashMap<>();
         searchCriteria.put("userId", userId);
         searchCriteria.put("location", location);
+        searchCriteria.put("latitude", latitude);
+        searchCriteria.put("longitude", longitude);
         searchCriteria.put("startTime", startTime);
         searchCriteria.put("endTime", endTime);
         searchCriteria.put("status", "active");

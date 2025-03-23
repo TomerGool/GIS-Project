@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="8dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Tap on the map to select parking location"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <fragment
+        android:id="@+id/map_add_parking"
+        android:name="com.google.android.gms.maps.SupportMapFragment"
+        android:layout_width="match_parent"
+        android:layout_height="300dp"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/tv_selected_address"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Select a location on the map"
+        android:textStyle="italic"
+        android:layout_marginBottom="16dp" />
+
+    <EditText
+        android:id="@+id/et_available_from"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Available From (HH:MM)"
+        android:inputType="time"
+        android:layout_marginBottom="8dp" />
+
+    <EditText
+        android:id="@+id/et_available_until"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Available Until (HH:MM)"
+        android:inputType="time"
+        android:layout_marginBottom="16dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end">
+
+        <Button
+            android:id="@+id/btn_cancel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cancel"
+            android:layout_marginEnd="8dp" />
+
+        <Button
+            android:id="@+id/btn_add"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Add Spot"
+            android:backgroundTint="@color/teal_700" />
+    </LinearLayout>
+</LinearLayout>

@@ -33,7 +33,7 @@ public class LoginActivity extends AppCompatActivity {
         EditText passwordEditText = findViewById(R.id.password);
         Button loginButton = findViewById(R.id.loginButton);
         TextView registerButton = findViewById(R.id.registerButton);
-        //<TextView forgotPassword = findViewById(R.id.forgotPassword);>
+        TextView forgotPasswordButton = findViewById(R.id.forgotPasswordButton);
         CheckBox rememberMe = findViewById(R.id.rememberMe);
 
         loginButton.setOnClickListener(v -> {
@@ -44,27 +44,52 @@ public class LoginActivity extends AppCompatActivity {
                 mAuth.signInWithEmailAndPassword(email, password)
                         .addOnCompleteListener(task -> {
                             if (task.isSuccessful()) {
-                                // Get current user ID
-                                String userId = mAuth.getCurrentUser().getUid();
+                                FirebaseUser user = mAuth.getCurrentUser();
 
-                                // Fetch user role from Firestore
-                                db.collection("users").document(userId)
-                                        .get()
-                                        .addOnSuccessListener(documentSnapshot -> {
-                                            // Store user role in SharedPreferences for quick access
-                                            String role = documentSnapshot.getString("role");
-                                            SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
-                                            prefs.edit().putString("userRole", role).apply();
+                                // Check if email is verified
+                                if (user != null && user.isEmailVerified()) {
+                                    // Get current user ID
+                                    String userId = user.getUid();
 
-                                            Toast.makeText(this, "Login successful!", Toast.LENGTH_SHORT).show();
-                                            Intent intent = new Intent(this, MainActivity.class);
-                                            startActivity(intent);
-                                            finish(); // Close the login screen
-                                        })
-                                        .addOnFailureListener(e -> {
-                                            Toast.makeText(this, "Error retrieving user data: " + e.getMessage(),
-                                                    Toast.LENGTH_SHORT).show();
-                                        });
+                                    // Fetch user role from Firestore
+                                    db.collection("users").document(userId)
+                                            .get()
+                                            .addOnSuccessListener(documentSnapshot -> {
+                                                // Store user role in SharedPreferences for quick access
+                                                String role = documentSnapshot.getString("role");
+                                                SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+                                                prefs.edit().putString("userRole", role).apply();
+
+                                                Toast.makeText(this, "Login successful!", Toast.LENGTH_SHORT).show();
+                                                Intent intent = new Intent(this, MainActivity.class);
+                                                startActivity(intent);
+                                                finish(); // Close the login screen
+                                            })
+                                            .addOnFailureListener(e -> {
+                                                Toast.makeText(this, "Error retrieving user data: " + e.getMessage(),
+                                                        Toast.LENGTH_SHORT).show();
+                                            });
+                                } else {
+                                    // Email not verified
+                                    Toast.makeText(this,
+                                            "Please verify your email before logging in. Check your inbox.",
+                                            Toast.LENGTH_LONG).show();
+
+                                    // Optional: Send verification email again
+                                    if (user != null) {
+                                        user.sendEmailVerification()
+                                                .addOnCompleteListener(verificationTask -> {
+                                                    if (verificationTask.isSuccessful()) {
+                                                        Toast.makeText(this,
+                                                                "Verification email sent again. Please check your inbox.",
+                                                                Toast.LENGTH_SHORT).show();
+                                                    }
+                                                });
+                                    }
+
+                                    // Sign out the user
+                                    mAuth.signOut();
+                                }
                             } else {
                                 Toast.makeText(this, "Login failed: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
                             }
@@ -78,9 +103,8 @@ public class LoginActivity extends AppCompatActivity {
             startActivity(new Intent(this, RegisterActivity.class));
         });
 
-        // forgotPassword.setOnClickListener(v -> {
-        //   // Navigate to Forgot Password screen (to be implemented)
-        // Toast.makeText(this, "Forgot Password Clicked", Toast.LENGTH_SHORT).show();
-        //});
+        forgotPasswordButton.setOnClickListener(v -> {
+            startActivity(new Intent(this, ForgotPasswordActivity.class));
+        });
     }
 }

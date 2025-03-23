@@ -11,6 +11,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.gisapp1.R;
+import com.example.gisapp1.utils.Utils;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -80,12 +81,26 @@ public class RegisterActivity extends AppCompatActivity {
             Toast.makeText(this, "Email is required", Toast.LENGTH_SHORT).show();
             return false;
         }
+        if (!Utils.isValidEmail(email)) {
+            Toast.makeText(this, "Invalid email address", Toast.LENGTH_SHORT).show();
+            return false;
+        }
         if (phone.isEmpty()) {
             Toast.makeText(this, "Phone number is required", Toast.LENGTH_SHORT).show();
             return false;
         }
+        if (!Utils.isValidPhoneNumber(phone)) {
+            Toast.makeText(this, "Invalid phone number", Toast.LENGTH_SHORT).show();
+            return false;
+        }
         if (password.isEmpty()) {
             Toast.makeText(this, "Password is required", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        if (!Utils.isStrongPassword(password)) {
+            Toast.makeText(this,
+                    "Password must be at least 8 characters long, contain uppercase, lowercase, number, and special character",
+                    Toast.LENGTH_LONG).show();
             return false;
         }
         return true;
@@ -104,13 +119,21 @@ public class RegisterActivity extends AppCompatActivity {
                             userData.put("lastName", lastName);
                             userData.put("email", email);
                             userData.put("phone", phone);
-                            userData.put("role", role);  // Add role to user data
+                            userData.put("role", role);
 
                             // Save user data to Firestore
                             db.collection("users").document(user.getUid())
                                     .set(userData)
                                     .addOnSuccessListener(aVoid -> {
-                                        Toast.makeText(this, "Registration successful!", Toast.LENGTH_SHORT).show();
+                                        // Send email verification
+                                        user.sendEmailVerification()
+                                                .addOnCompleteListener(verificationTask -> {
+                                                    if (verificationTask.isSuccessful()) {
+                                                        Toast.makeText(this,
+                                                                "Registration successful! Please verify your email.",
+                                                                Toast.LENGTH_SHORT).show();
+                                                    }
+                                                });
 
                                         // Navigate to login activity
                                         Intent intent = new Intent(this, LoginActivity.class);
@@ -118,12 +141,14 @@ public class RegisterActivity extends AppCompatActivity {
                                         finish();
                                     })
                                     .addOnFailureListener(e ->
-                                            Toast.makeText(this, "Error saving user data: " + e.getMessage(),
+                                            Toast.makeText(this,
+                                                    "Error saving user data: " + e.getMessage(),
                                                     Toast.LENGTH_SHORT).show());
                         }
                     } else {
-                        Toast.makeText(this, "Registration failed: " +
-                                task.getException().getMessage(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this,
+                                "Registration failed: " + task.getException().getMessage(),
+                                Toast.LENGTH_SHORT).show();
                     }
                 });
     }

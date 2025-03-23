@@ -1,5 +1,6 @@
 package com.example.gisapp1.services;
 
+import android.location.Location;
 import android.util.Log;
 
 import com.example.gisapp1.models.AppNotification;
@@ -42,7 +43,7 @@ public class ParkingAvailabilityNotificationService {
 
                         // Find matching parking spots
                         findMatchingParkingSpots(renterId, desiredLocation,
-                                desiredStartTime, desiredEndTime);
+                                desiredStartTime, desiredEndTime, searchDoc);
                     }
                 })
                 .addOnFailureListener(e ->
@@ -53,7 +54,8 @@ public class ParkingAvailabilityNotificationService {
      * Find parking spots that match a renter's search criteria
      */
     private void findMatchingParkingSpots(String renterId, String location,
-                                          String startTime, String endTime) {
+                                          String startTime, String endTime,
+                                          QueryDocumentSnapshot searchDoc) {
         db.collection("parkingSpots")
                 .whereEqualTo("status", "available")
                 .get()
@@ -61,12 +63,20 @@ public class ParkingAvailabilityNotificationService {
                     for (QueryDocumentSnapshot spotDoc : parkingSpots) {
                         String spotAddress = spotDoc.getString("address");
 
+                        // Get coordinates (with default values if not available)
+                        double spotLat = spotDoc.contains("latitude") ? spotDoc.getDouble("latitude") : 0;
+                        double spotLon = spotDoc.contains("longitude") ? spotDoc.getDouble("longitude") : 0;
+
+                        // Get search coordinates (with default values if not available)
+                        double searchLat = searchDoc.contains("latitude") ? searchDoc.getDouble("latitude") : 0;
+                        double searchLon = searchDoc.contains("longitude") ? searchDoc.getDouble("longitude") : 0;
+
                         // Check if location matches (with some flexibility for nearby locations)
-                        if (isLocationMatching(spotAddress, location)) {
+                        if (isLocationMatching(spotAddress, location, spotLat, spotLon, searchLat, searchLon)) {
                             // Check if spot meets time requirements
                             if (isSpotTimeCompatible(spotDoc, startTime, endTime)) {
                                 // Create and send notification
-                                createAvailabilityNotification(renterId, spotDoc);
+                                createAvailabilityNotification(renterId, spotDoc, searchDoc);
                             }
                         }
                     }
@@ -77,11 +87,23 @@ public class ParkingAvailabilityNotificationService {
      * Check if the parking spot location matches the desired location
      * This could be enhanced with geocoding to find nearby spots
      */
-    private boolean isLocationMatching(String spotAddress, String desiredLocation) {
-        // Simple string matching for now
-        // Could be improved with geocoding and radius search
-        return spotAddress != null && desiredLocation != null &&
+    private boolean isLocationMatching(String spotAddress, String desiredLocation,
+                                       double spotLat, double spotLon,
+                                       double searchLat, double searchLon) {
+        // First, do a text-based matching
+        boolean textMatch = spotAddress != null && desiredLocation != null &&
                 spotAddress.toLowerCase().contains(desiredLocation.toLowerCase());
+
+        // Then do a geographic proximity check
+        if (textMatch && searchLat != 0 && searchLon != 0) {
+            float[] distance = new float[1];
+            Location.distanceBetween(searchLat, searchLon, spotLat, spotLon, distance);
+
+            // Check if spot is within 5 kilometers
+            return distance[0] <= 5000;
+        }
+
+        return textMatch;
     }
 
     /**
@@ -122,18 +144,44 @@ public class ParkingAvailabilityNotificationService {
      * Create notification for an available parking spot
      */
     private void createAvailabilityNotification(String renterId,
-                                                QueryDocumentSnapshot spotDoc) {
+                                                QueryDocumentSnapshot spotDoc,
+                                                QueryDocumentSnapshot searchDoc) {
+        // Get spot details
+        String spotAddress = spotDoc.getString("address");
+        String availableFrom = spotDoc.getString("availableFrom");
+        String availableUntil = spotDoc.getString("availableUntil");
+
+        // Get original search criteria details
+        String searchLocation = searchDoc.getString("location");
+        String searchStartTime = searchDoc.getString("startTime");
+        String searchEndTime = searchDoc.getString("endTime");
+
         // Create notification object
         AppNotification notification = new AppNotification(
                 renterId,
                 "Parking Spot Available",
                 "A parking spot matching your search is now available at " +
-                        spotDoc.getString("address") +
-                        " from " + spotDoc.getString("availableFrom") +
-                        " to " + spotDoc.getString("availableUntil"),
+                        spotAddress +
+                        " from " + availableFrom +
+                        " to " + availableUntil,
                 AppNotification.NotificationType.PARKING_AVAILABLE,
                 spotDoc.getId()
         );
+
+        // Add extra data for more context
+        notification.addExtraData("location", searchLocation);
+        notification.addExtraData("startTime", searchStartTime);
+        notification.addExtraData("endTime", searchEndTime);
+
+        // Additional spot details
+        notification.addExtraData("spotAddress", spotAddress);
+        notification.addExtraData("availableFrom", availableFrom);
+        notification.addExtraData("availableUntil", availableUntil);
+
+        // Optional: Add more details if available
+        if (spotDoc.contains("price")) {
+            notification.addExtraData("price", String.valueOf(spotDoc.getDouble("price")));
+        }
 
         // Save notification
         notificationRepository.createNotification(notification);
